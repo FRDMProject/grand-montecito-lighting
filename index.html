@@ -32,7 +32,11 @@
   #toggleSide { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 350px; z-index: 6; transition: left .25s; }
   body.side-closed #toggleSide { left: 10px; }
   h1 { font-size: 16px; margin: 0 0 2px; letter-spacing: .02em; }
-  .sub { color: var(--muted); font-size: 12px; margin-bottom: 12px; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .models { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+  .models a { font-size: 12px; color: var(--accent); text-decoration: none; border: 1px solid #2a5d93; border-radius: 5px; padding: 3px 8px; }
+  .models a[aria-current] { background: #1d5a96; color: #fff; border-color: var(--accent); }
+  .models a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
   h2 { font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--accent);
     margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
   button, select { font: inherit; color: var(--ink); background: #10325c; border: 1px solid #2a5d93;
@@ -97,6 +101,9 @@
 <aside id="side">
   <h1>Grand Montecito Dental – Shell</h1>
   <div class="sub">6630 Grand Montecito Pkwy, Las Vegas · Helix Electric · VE lighting model</div>
+  <nav class="models" aria-label="Models">
+    <a href="./" aria-current="page">Shell</a><a href="interior/">Interior</a><a href="combined/">Shell + interior</a>
+  </nav>
 
   <h2>Views</h2>
   <div class="grid" id="views"></div>

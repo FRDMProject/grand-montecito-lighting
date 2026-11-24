@@ -1,0 +1,753 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex, nofollow">
+<title>Grand Montecito Lighting</title>
+<style>
+  :root {
+    --bg: #071a33; --panel: #0c2547ee; --line: #1f4a7a;
+    --ink: #d8ecff; --muted: #8fb3d9; --accent: #5cc8ff; --warn: #ffb547; --bad: #ff5d5d; --good: #6dffa8; --ctrl: #c99bff;
+    --mono: ui-monospace, "Cascadia Mono", Consolas, monospace;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: var(--bg); color: var(--ink);
+    font: 13px/1.45 system-ui, "Segoe UI", sans-serif; overflow: hidden; }
+  #view { position: fixed; inset: 0; }
+  #labels { position: fixed; inset: 0; pointer-events: none; }
+  body.hide-fx-labels .lbl.fx:not(.ctrl), body.hide-ct-labels .lbl.ctrl, body.hide-st-labels .lbl.st { display: none; }
+  .lbl { font: 700 9px/1 var(--mono); padding: 2px 4px; border-radius: 3px; white-space: nowrap;
+    background: #071a33dd; border: 1px solid var(--line); color: var(--ink); transform: translateY(-10px); }
+  .lbl.st { font-size: 11px; font-weight: 600; color: var(--accent); border-color: #2c6aa3; }
+  .lbl.fx.ok { color: var(--good); border-color: #2f9a63; }
+  .lbl.fx.cond { color: #1a1200; background: #ffb547dd; border-color: var(--warn); }
+  .lbl.fx.no { color: #fff; background: #8a1c1cdd; border-color: var(--bad); }
+  .lbl.fx.ctrl { color: #fff; background: #5a2a8add; border-color: var(--ctrl); }
+
+  #side { position: fixed; top: 0; left: 0; bottom: 0; width: 350px; background: var(--panel);
+    border-right: 1px solid var(--line); overflow-y: auto; backdrop-filter: blur(6px);
+    padding: calc(14px + env(safe-area-inset-top, 0px)) 14px calc(30px + env(safe-area-inset-bottom, 0px)) calc(14px + env(safe-area-inset-left, 0px));
+    transition: transform .25s; z-index: 5; }
+  body.side-closed #side { transform: translateX(-100%); }
+  #toggleSide { position: fixed; top: calc(10px + env(safe-area-inset-top, 0px)); left: 360px; z-index: 6; transition: left .25s; }
+  body.side-closed #toggleSide { left: 10px; }
+  h1 { font-size: 16px; margin: 0 0 2px; letter-spacing: .02em; }
+  .sub { color: var(--muted); font-size: 12px; margin-bottom: 8px; }
+  .models { display: flex; gap: 6px; flex-wrap: wrap; margin-bottom: 4px; }
+  .models a { font-size: 12px; color: var(--accent); text-decoration: none; border: 1px solid #2a5d93; border-radius: 5px; padding: 3px 8px; }
+  .models a[aria-current] { background: #1d5a96; color: #fff; border-color: var(--accent); }
+  .models a:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  h2 { font: 700 11px/1 var(--mono); text-transform: uppercase; letter-spacing: .12em; color: var(--accent);
+    margin: 18px 0 8px; padding-bottom: 6px; border-bottom: 1px solid var(--line); }
+  button, select { font: inherit; color: var(--ink); background: #10325c; border: 1px solid #2a5d93;
+    border-radius: 5px; padding: 5px 9px; cursor: pointer; }
+  button:hover, select:hover { background: #164175; }
+  button:focus-visible, select:focus-visible, input:focus-visible, summary:focus-visible { outline: 2px solid var(--accent); outline-offset: 1px; }
+  button.on { background: #1d5a96; border-color: var(--accent); }
+  .grid { display: flex; flex-wrap: wrap; gap: 6px; }
+  label.chk { display: flex; align-items: center; gap: 7px; padding: 2px 0; cursor: pointer; }
+  .row { display: flex; align-items: center; gap: 8px; margin: 6px 0; }
+  .row > span { min-width: 78px; color: var(--muted); }
+  input[type=range] { flex: 1; accent-color: var(--accent); }
+  table { width: 100%; border-collapse: collapse; font-size: 12px; }
+  td, th { padding: 4px 4px; border-bottom: 1px solid #173a63; text-align: left; vertical-align: top; }
+  th { color: var(--muted); font-weight: 600; }
+  tr.sec th { color: var(--accent); font: 700 10px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .1em; padding-top: 10px; }
+  tr.tot th { color: var(--ink); }
+  td.r, th.r { text-align: right; white-space: nowrap; }
+  tr.no td { color: #ffc2c2; }
+  tr.ctrl td { color: #e6d4ff; }
+  .tag { display: inline-block; font: 700 11px/1 var(--mono); padding: 3px 5px; border-radius: 3px; border: 1px solid; white-space: nowrap; }
+  .tag.ok { color: var(--good); border-color: #2f9a63; }
+  .tag.cond { color: #1a1200; background: var(--warn); border-color: var(--warn); }
+  .tag.no { color: #fff; background: #8a1c1c; border-color: var(--bad); }
+  .tag.ctrl { color: #fff; background: #5a2a8a; border-color: var(--ctrl); }
+  details.fxl { margin: 2px 0; }
+  details.fxl summary { cursor: pointer; padding: 3px 0; color: var(--muted); }
+  .fxlist { display: flex; flex-wrap: wrap; gap: 4px; margin: 4px 0 8px; }
+  .fxlist button { font: 600 11px var(--mono); padding: 3px 6px; }
+  .note { color: var(--muted); font-size: 12px; margin: 6px 0; }
+  .note b { color: var(--ink); }
+  .warn { color: var(--warn); }
+  .bad { color: var(--bad); font-weight: 700; }
+  .ctl { color: var(--ctrl); font-weight: 700; }
+  .cnd { color: var(--warn); font-weight: 700; }
+  ul.note { padding-left: 16px; margin-top: 0; }
+
+  #info { position: fixed; right: calc(12px + env(safe-area-inset-right, 0px)); bottom: calc(12px + env(safe-area-inset-bottom, 0px));
+    width: 390px; max-height: 70vh; overflow: auto; background: var(--panel); border: 1px solid var(--line); border-radius: 8px;
+    padding: 12px 14px; z-index: 5; display: none; backdrop-filter: blur(6px); }
+  #info.show { display: block; }
+  #info h3 { margin: 0 0 2px; font-size: 15px; padding-right: 30px; }
+  #info .close { position: absolute; top: 8px; right: 8px; padding: 2px 8px; }
+  #info dl { display: grid; grid-template-columns: 96px 1fr; gap: 3px 8px; margin: 8px 0 0; font-size: 12px; }
+  #info dt { color: var(--muted); }
+  #info dd { margin: 0; overflow-wrap: anywhere; }
+  .ih { font: 700 11px/1.2 var(--mono); text-transform: uppercase; letter-spacing: .1em; color: var(--accent); margin: 14px 0 0; }
+  .ih.warn { color: var(--warn); }
+  .box { margin-top: 10px; padding: 8px 10px; border-radius: 6px; }
+  .box b { color: #fff; }
+  .box.no { border: 1px solid var(--bad); background: #4a0f0f99; }
+  .box.ctrl { border: 1px solid var(--ctrl); background: #3a1a5e99; }
+  .box.cond { border: 1px solid var(--warn); background: #4a330a99; }
+  #hint { position: fixed; right: calc(12px + env(safe-area-inset-right, 0px)); top: calc(10px + env(safe-area-inset-top, 0px));
+    font-size: 12px; color: var(--muted); background: #071a33aa; padding: 5px 9px; border-radius: 5px; border: 1px solid var(--line); z-index: 4; }
+  #compass { position: fixed; right: calc(18px + env(safe-area-inset-right, 0px)); top: calc(46px + env(safe-area-inset-top, 0px));
+    width: 46px; height: 46px; z-index: 4; pointer-events: none; }
+  @media (max-width: 700px) {
+    #side { width: 86vw; }
+    #toggleSide { left: calc(86vw + 8px); }
+    #info { left: 12px; width: auto; max-height: 45vh; }
+    #hint { display: none; }
+  }
+</style>
+</head>
+<body>
+<div id="view"></div>
+<div id="labels"></div>
+<button id="toggleSide" aria-label="Toggle panel">☰</button>
+<div id="hint">Drag: rotate · Right-drag: pan · Wheel: zoom · Click a light or control for details</div>
+<svg id="compass" viewBox="0 0 46 46" aria-hidden="true"><circle cx="23" cy="23" r="21" fill="#071a33cc" stroke="#2c6aa3"/>
+  <g id="needle"><path d="M23 6 L28 23 L23 20 L18 23 Z" fill="#5cc8ff"/><text x="23" y="40" fill="#8fb3d9" font-size="9" text-anchor="middle" font-family="monospace">N</text></g></svg>
+
+<aside id="side">
+  <h1 id="title"></h1>
+  <div class="sub">6630 Grand Montecito Pkwy, Las Vegas · Helix Electric · VE lighting model</div>
+  <nav class="models" aria-label="Models">
+    <a href="../">Shell</a><a href="../interior/" id="nav-interior">Interior</a><a href="../combined/" id="nav-combined">Shell + interior</a>
+  </nav>
+
+  <h2>Views</h2>
+  <div class="grid" id="views"></div>
+
+  <h2>Show</h2>
+  <div id="layers"></div>
+  <div class="row"><span>Ground sheet</span><select id="sheet"></select></div>
+  <div class="row"><span>See-through</span><input id="xray" type="range" min="0" max="100" value="60" aria-label="Structure transparency"></div>
+  <div class="row"><span>Night view</span><button id="night">Off</button></div>
+
+  <h2>Fixtures &amp; controls</h2>
+  <p class="note"><span class="tag ok">F4</span> substitute priced ·
+    <span class="tag cond">F3</span> conditional substitute ·
+    <span class="tag no">F5</span> <b>no suitable substitute</b> (to be sourced) ·
+    <span class="tag ctrl">Sos</span> lighting control, <b>substitute needed</b> (Michelon to add)</p>
+  <div style="overflow-x:auto"><table id="sched"></table></div>
+  <p class="note" id="wattsum"></p>
+  <div id="fxlists"></div>
+
+  <h2>Model basis</h2>
+  <div id="basis"></div>
+</aside>
+
+<div id="info" role="dialog" aria-live="polite"></div>
+
+<script>
+  if ('combined' === 'combined') document.write('<script src="../sheets.js"><\/script>');
+</script>
+<script src="../ti-sheet.js"></script>
+<script type="importmap">
+{ "imports": {
+  "three": "https://cdn.jsdelivr.net/npm/three@0.160.0/build/three.module.js",
+  "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.160.0/examples/jsm/"
+} }
+</script>
+<script type="module">
+import * as THREE from 'three';
+import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+import { CSS2DRenderer, CSS2DObject } from 'three/addons/renderers/CSS2DRenderer.js';
+
+const MODE = 'combined', COMBINED = MODE === 'combined';
+const TI = {"types":{"F1":{"tag":"F1","scope":"TI","status":"ok","name":"2x4 LED troffer","mount":"Recessed","spec":"HE Williams AT1-2-4-L40-8-50-D-DIM-UNV","specData":"2x4 architectural troffer, 4,000 lm, 80 CRI, 5000K, 34.2 W, 0-10V dim, 120-277V","specW":34.2,"sub":{"brand":"Starlake","model":"SS-BPL24-TCP72W-CCT","item":"P-0164","price":41.85,"data":"2x4 backlit flat panel; 72/60/50/40/30 W selectable, 10,208 lm @ 72 W, 3500-6500K, 120-277V, 0-10V, sensor base, DLC"},"setting":"30 W (~4,250 lm), 5000K","veW":30,"flags":["Backlit flat panel in place of an architectural troffer. Confirm the look with the architect."],"qty":2},"F1E":{"tag":"F1E","scope":"TI","status":"ok","name":"2x4 LED troffer, emergency","mount":"Recessed","spec":"HE Williams AT1-2-4-L40-8-50-D-DIM-UNV, EM","specData":"As F1 with emergency battery pack, 90 min minimum","specW":34.2,"sub":{"brand":"Starlake","model":"SS-BPL24-TCP72W-CCT (EM)","item":"E-0025","price":122.61,"data":"2x4 backlit flat panel; 72/60/50/40/30 W selectable, 10,208 lm @ 72 W, 3500-6500K, 120-277V, 0-10V, sensor base, DLC; factory EM driver, 90 min"},"setting":"30 W (~4,250 lm), 5000K","veW":30,"flags":["Confirm EM run time is 90 min."],"qty":3},"F2":{"tag":"F2","scope":"TI","status":"ok","name":"2x2 LED troffer","mount":"Recessed","spec":"HE Williams AT1-2-2-L40-8-50-D-DIM-UNV","specData":"2x2 architectural troffer, 4,000 lm, 80 CRI, 5000K, 0-10V dim, 120-277V (schedule shows 3.6 W)","specW":34.2,"sub":{"brand":"Starlake","model":"SS-BPL22-TCP40W-CCT","item":"P-0163","price":32.09,"data":"2x2 backlit flat panel; 40/30/25/20/15 W selectable, 5,200 lm @ 40 W, 3500-6500K, 120-277V, 0-10V, sensor base, DLC"},"setting":"40 W (5,200 lm), 5000K","veW":40,"flags":["The schedule lists 3.6 W for F2, likely a typo. 30 W gives ~3,900 lm (2.5% under 4,000)."],"qty":5},"F2E":{"tag":"F2E","scope":"TI","status":"ok","name":"2x2 LED troffer, emergency","mount":"Recessed","spec":"HE Williams AT1-2-2-L40-8-50-D-DIM-UNV, EM","specData":"As F2 with emergency battery pack, 90 min minimum","specW":34.2,"sub":{"brand":"Starlake","model":"SS-BPL22-TCP40W-CCT (EM)","item":"SLK-EM-P-0076","price":93.0,"data":"2x2 backlit flat panel; 40/30/25/20/15 W selectable, 5,200 lm @ 40 W, 3500-6500K, 120-277V, 0-10V, sensor base, DLC; factory EM driver"},"setting":"40 W (5,200 lm), 5000K","veW":40,"flags":["Confirm EM run time is 90 min."],"qty":4},"F3":{"tag":"F3","scope":"TI","status":"cond","name":"4\" LED downlight","mount":"Recessed","spec":"HE Williams 4DR-TL-L20-80-50-DIM-UNV-O-W-OF-CS-CS-N","specData":"4\" downlight, 2,000 lm, 80 CRI, 5000K, 18 W, 0-10V dim, 120-277V","specW":18,"sub":{"brand":"Honya","model":"HYA-CDL06-30W-TWCCT","item":"","price":34.1,"data":"6\" commercial downlight; 30/26/22/18/15 W selectable, 3,000 lm max, 2700-5000K, 120-277V, 0-10V or ELV/TRIAC, ETL, Energy Star"},"setting":"22 W (~2,200 lm), 5000K","veW":22,"flags":["CONDITIONAL: 6-inch aperture vs the 4-inch spec. The 4-inch Honya CDL04 tops out at 1,600 lm (20% under). Needs architect and engineer approval."],"qty":75},"F3E":{"tag":"F3E","scope":"TI","status":"no","name":"4\" LED downlight, emergency","mount":"Recessed","spec":"HE Williams 4DR-TL-L20-80-50-DIM-UNV-O-W-OF-CS-CS-N, EM","specData":"As F3 with emergency battery pack, 90 min minimum","specW":18,"sub":null,"setting":"-","veW":null,"flags":["No recessed downlight with an emergency battery on the price list."],"qty":32},"F4":{"tag":"F4","scope":"TI","status":"ok","name":"4\" LED downlight","mount":"Recessed","spec":"HE Williams 4DR-TL-L15-80-50-DIM-UNV-O-W-OF-CS-CS-N","specData":"4\" downlight, 1,500 lm, 80 CRI, 5000K, 13.7 W, 0-10V dim, 120-277V","specW":13.7,"sub":{"brand":"Honya","model":"HYA-CDL04-16W-TWCCT","item":"","price":24.03,"data":"4\" commercial downlight; 16/14/10/8 W selectable, 1,600 lm max, 2700-5000K, 120-277V, 0-10V or ELV/TRIAC, ETL, Energy Star"},"setting":"16 W (1,600 lm), 5000K","veW":16,"flags":["Confirm trim color and the ceiling cutout."],"qty":77},"F5":{"tag":"F5","scope":"TI","status":"no","name":"2\" LED downlight","mount":"Recessed","spec":"HE Williams 2DR-L5-80-50-DIM-UNV-O-M-OF-CS-R","specData":"2\" downlight, 500 lm, 80 CRI, 5000K, 6.7 W, 0-10V dim, 120-277V","specW":6.7,"sub":null,"setting":"-","veW":null,"flags":["Nothing smaller than 4 inches on the price list."],"qty":23},"F6":{"tag":"F6","scope":"TI","status":"no","name":"LED chandelier","mount":"Suspended","spec":"TMS Lighting 502FIV-20LX36W-50K-120V-POS-RM-XX-DIML","specData":"Decorative LED chandelier, 56 W, 5000K, 120V","specW":56,"sub":null,"setting":"-","veW":null,"flags":["No chandelier on the price list (decorative, owner or designer selection)."],"qty":1},"X1":{"tag":"X1","scope":"TI","status":"ok","name":"Exit sign / emergency combo","mount":"Surface","spec":"HE Williams EXIT/EM/CA-R-WF-WHT-D-DRHL-T-WHT-HL-MV","specData":"Exit sign with battery, red letters, white housing, 120-277V, 4.8 W (count sheet: exit combo)","specW":4.8,"sub":{"brand":"Honya","model":"HY-EXLCOMB01RED","item":"","price":38.75,"data":"Exit sign + 2 adjustable emergency heads, red letters, white housing, Ni-Cad, 120/277V"},"setting":"-","veW":4.4,"flags":["Count sheet calls X1 an exit combo. The plan tags 2 as X1 and 6 as X2 (X2 isn't in the schedule); 2 are untagged. Exit-only option: HY-EXS01RED, $17.05."],"qty":10},"LCP":{"tag":"LCP","scope":"TI controls","status":"ctrl","name":"48-relay lighting control relay panel with time clock (with relays)","where":"Electrical room","sub":null,"qty":1,"flags":["No lighting controls on the Michelon price list. Michelon to add the substitute."]},"PC":{"tag":"PC","scope":"TI controls","status":"ctrl","name":"Rooftop exterior photocell for the LCP","where":"Roof (location assumed, near the NW corner)","sub":null,"qty":1,"flags":["No lighting controls on the Michelon price list. Michelon to add the substitute."]},"SA":{"tag":"Sa/b/c","scope":"TI controls","status":"ctrl","name":"Wall switch / zone control station (Sa / Sb / Sc)","where":"Office (3-gang) and patient lounge (5)","sub":null,"qty":8,"flags":["No lighting controls on the Michelon price list. Michelon to add the substitute."]},"SOS":{"tag":"Sos","scope":"TI controls","status":"ctrl","name":"Wall switch occupancy / vacancy sensor","where":"One per room","sub":null,"qty":17,"flags":["No lighting controls on the Michelon price list. Michelon to add the substitute."]},"S":{"tag":"S","scope":"TI controls","status":"ctrl","name":"20A 1-pole switch","where":"Electrical room","sub":null,"qty":1,"flags":["No lighting controls on the Michelon price list. Michelon to add the substitute."]}},"order":["F1","F1E","F2","F2E","F3","F3E","F4","F5","F6","X1","LCP","PC","SA","SOS","S"],"fixtures":[{"t":"F4","X":14.15,"Y":3.16},{"t":"F4","X":10.15,"Y":3.16},{"t":"F4","X":10.14,"Y":7.68},{"t":"F4","X":10.14,"Y":11.68},{"t":"F4","X":14.15,"Y":11.68},{"t":"F4","X":24.06,"Y":3.16},{"t":"F4","X":20.06,"Y":3.16},{"t":"F4","X":20.06,"Y":7.68},{"t":"F4","X":20.06,"Y":11.68},{"t":"F4","X":24.06,"Y":11.68},{"t":"F4","X":33.98,"Y":3.16},{"t":"F4","X":29.98,"Y":3.16},{"t":"F4","X":29.97,"Y":7.68},{"t":"F4","X":29.97,"Y":11.68},{"t":"F4","X":33.98,"Y":11.68},{"t":"F4","X":43.9,"Y":3.16},{"t":"F4","X":39.9,"Y":3.16},{"t":"F4","X":39.89,"Y":7.68},{"t":"F4","X":39.89,"Y":11.68},{"t":"F4","X":43.9,"Y":11.68},{"t":"F4","X":53.81,"Y":3.16},{"t":"F4","X":49.81,"Y":3.16},{"t":"F4","X":49.81,"Y":7.68},{"t":"F4","X":49.81,"Y":11.68},{"t":"F4","X":53.81,"Y":11.68},{"t":"F4","X":63.73,"Y":3.16},{"t":"F4","X":59.73,"Y":3.16},{"t":"F4","X":59.72,"Y":7.68},{"t":"F4","X":59.72,"Y":11.68},{"t":"F4","X":63.73,"Y":11.68},{"t":"F4","X":73.65,"Y":3.16},{"t":"F4","X":69.65,"Y":3.16},{"t":"F4","X":69.64,"Y":7.68},{"t":"F4","X":69.64,"Y":11.68},{"t":"F4","X":73.65,"Y":11.68},{"t":"F4","X":83.57,"Y":3.16},{"t":"F4","X":79.57,"Y":3.16},{"t":"F4","X":79.56,"Y":7.68},{"t":"F4","X":79.56,"Y":11.68},{"t":"F4","X":83.57,"Y":11.68},{"t":"F3","X":11.09,"Y":16.57},{"t":"F3E","X":16.84,"Y":16.57},{"t":"F3","X":22.59,"Y":16.57},{"t":"F3","X":28.34,"Y":16.57},{"t":"F3E","X":34.09,"Y":16.57},{"t":"F3","X":39.84,"Y":16.57},{"t":"F3","X":45.59,"Y":16.57},{"t":"F3E","X":51.34,"Y":16.57},{"t":"F3","X":57.09,"Y":16.57},{"t":"F3E","X":57.09,"Y":22.18},{"t":"F3","X":52.19,"Y":24.5},{"t":"F3","X":48.19,"Y":24.5},{"t":"F3","X":62.84,"Y":16.57},{"t":"F3E","X":68.59,"Y":16.57},{"t":"F3","X":74.34,"Y":16.57},{"t":"F3","X":80.09,"Y":16.57},{"t":"F3E","X":85.84,"Y":16.57},{"t":"F3","X":83.67,"Y":22.1},{"t":"F3","X":79.67,"Y":22.1},{"t":"F3E","X":87.67,"Y":22.1},{"t":"F3","X":87.67,"Y":26.1},{"t":"F3","X":83.67,"Y":26.1},{"t":"F3","X":79.67,"Y":26.1},{"t":"F3","X":88.75,"Y":12.26},{"t":"F3E","X":83.67,"Y":30.1},{"t":"F3","X":87.67,"Y":30.1},{"t":"F3E","X":76.75,"Y":32.08},{"t":"F3","X":72.0,"Y":32.08},{"t":"F3E","X":62.5,"Y":32.08},{"t":"F3","X":67.25,"Y":32.08},{"t":"F3E","X":57.09,"Y":29.06},{"t":"F3E","X":51.69,"Y":31.13},{"t":"F3","X":47.69,"Y":31.13},{"t":"F3","X":57.09,"Y":34.81},{"t":"F3E","X":51.69,"Y":37.59},{"t":"F3","X":47.69,"Y":37.59},{"t":"F3","X":47.69,"Y":41.59},{"t":"F3","X":51.69,"Y":41.59},{"t":"F3","X":57.09,"Y":40.56},{"t":"F3","X":62.92,"Y":39.04},{"t":"F3","X":66.92,"Y":39.04},{"t":"F3","X":70.92,"Y":39.04},{"t":"F3","X":76.75,"Y":36.57},{"t":"F3","X":83.26,"Y":36.31},{"t":"F3E","X":87.26,"Y":36.31},{"t":"F3","X":87.93,"Y":44.75},{"t":"F3","X":87.93,"Y":48.75},{"t":"F3E","X":87.93,"Y":52.75},{"t":"F3","X":87.93,"Y":56.75},{"t":"F3","X":87.93,"Y":60.75},{"t":"F3","X":83.93,"Y":44.75},{"t":"F3","X":83.93,"Y":48.75},{"t":"F3","X":83.93,"Y":52.75},{"t":"F3","X":83.93,"Y":56.75},{"t":"F3","X":83.93,"Y":60.75},{"t":"F3E","X":79.93,"Y":44.75},{"t":"F3","X":79.93,"Y":48.75},{"t":"F3E","X":79.93,"Y":52.75},{"t":"F3","X":79.93,"Y":56.75},{"t":"F3E","X":79.93,"Y":60.75},{"t":"F3","X":75.93,"Y":44.75},{"t":"F3","X":75.93,"Y":48.75},{"t":"F3","X":75.93,"Y":52.75},{"t":"F3","X":75.93,"Y":56.75},{"t":"F3","X":75.93,"Y":60.75},{"t":"F3","X":71.93,"Y":44.75},{"t":"F3","X":71.93,"Y":48.75},{"t":"F3","X":71.93,"Y":52.75},{"t":"F3","X":71.93,"Y":56.75},{"t":"F3","X":71.93,"Y":60.75},{"t":"F3E","X":67.93,"Y":44.75},{"t":"F3","X":67.93,"Y":48.75},{"t":"F3","X":67.93,"Y":52.75},{"t":"F3","X":63.93,"Y":44.75},{"t":"F3","X":63.93,"Y":48.75},{"t":"F3E","X":63.93,"Y":52.75},{"t":"F3E","X":57.09,"Y":46.31},{"t":"F3","X":57.09,"Y":52.11},{"t":"F3E","X":51.22,"Y":52.11},{"t":"F3","X":45.35,"Y":52.11},{"t":"F3","X":39.48,"Y":52.11},{"t":"F3E","X":33.61,"Y":52.11},{"t":"F3","X":27.73,"Y":52.11},{"t":"F3","X":21.86,"Y":52.11},{"t":"F3","X":10.12,"Y":52.11},{"t":"F3E","X":15.99,"Y":52.11},{"t":"F3","X":4.25,"Y":52.11},{"t":"F4","X":3.15,"Y":38.7},{"t":"F4","X":7.15,"Y":38.7},{"t":"F4","X":3.14,"Y":43.22},{"t":"F4","X":3.14,"Y":47.22},{"t":"F4","X":7.15,"Y":47.22},{"t":"F3","X":16.0,"Y":46.83},{"t":"F3E","X":16.0,"Y":41.83},{"t":"F3E","X":22.53,"Y":42.05},{"t":"F3","X":22.53,"Y":38.05},{"t":"F3E","X":22.53,"Y":34.05},{"t":"F3","X":16.0,"Y":36.83},{"t":"F4","X":11.8,"Y":37.15},{"t":"F3E","X":16.0,"Y":31.83},{"t":"F3","X":22.53,"Y":29.38},{"t":"F3","X":16.0,"Y":26.83},{"t":"F3","X":16.0,"Y":21.85},{"t":"F3","X":22.53,"Y":25.38},{"t":"F3E","X":22.53,"Y":21.38},{"t":"F3","X":29.01,"Y":22.72},{"t":"F3E","X":33.01,"Y":22.72},{"t":"F4","X":10.38,"Y":21.1},{"t":"F3E","X":3.68,"Y":21.29},{"t":"F4","X":7.16,"Y":56.89},{"t":"F4","X":3.16,"Y":56.89},{"t":"F4","X":7.16,"Y":65.41},{"t":"F4","X":3.16,"Y":65.41},{"t":"F4","X":7.16,"Y":60.89},{"t":"F4","X":17.02,"Y":56.89},{"t":"F4","X":13.01,"Y":56.89},{"t":"F4","X":13.01,"Y":65.41},{"t":"F4","X":17.02,"Y":60.89},{"t":"F4","X":26.92,"Y":56.89},{"t":"F4","X":22.92,"Y":56.89},{"t":"F4","X":22.92,"Y":65.41},{"t":"F4","X":26.92,"Y":60.89},{"t":"F4","X":36.83,"Y":56.89},{"t":"F4","X":32.82,"Y":56.89},{"t":"F4","X":32.82,"Y":65.41},{"t":"F4","X":36.83,"Y":60.89},{"t":"F4","X":46.74,"Y":56.89},{"t":"F4","X":42.73,"Y":56.89},{"t":"F4","X":42.73,"Y":65.41},{"t":"F4","X":46.74,"Y":60.89},{"t":"F4","X":56.64,"Y":56.89},{"t":"F4","X":52.64,"Y":56.89},{"t":"F4","X":56.64,"Y":65.41},{"t":"F4","X":52.64,"Y":65.41},{"t":"F4","X":56.64,"Y":60.89},{"t":"F4","X":17.01,"Y":65.41},{"t":"F4","X":26.92,"Y":65.41},{"t":"F4","X":36.82,"Y":65.41},{"t":"F4","X":46.73,"Y":65.41},{"t":"F3","X":63.83,"Y":65.49},{"t":"F3E","X":63.83,"Y":60.49},{"t":"F3","X":50.69,"Y":46.95},{"t":"F3E","X":29.11,"Y":45.95},{"t":"F3","X":33.11,"Y":45.95},{"t":"F3","X":22.53,"Y":46.95},{"t":"F5","X":61.87,"Y":29.27},{"t":"F5","X":65.38,"Y":29.27},{"t":"F5","X":68.89,"Y":29.27},{"t":"F5","X":72.4,"Y":29.27},{"t":"F5","X":82.26,"Y":41.21},{"t":"F5","X":85.26,"Y":41.21},{"t":"F5","X":88.26,"Y":41.21},{"t":"F5","X":70.73,"Y":43.58},{"t":"F5","X":67.62,"Y":43.58},{"t":"F6","X":56.33,"Y":54.54},{"t":"F5","X":46.44,"Y":54.54},{"t":"F5","X":36.51,"Y":54.54},{"t":"F5","X":26.61,"Y":54.54},{"t":"F5","X":16.7,"Y":54.54},{"t":"F5","X":6.79,"Y":54.54},{"t":"F5","X":3.59,"Y":49.68},{"t":"F5","X":80.01,"Y":14.13},{"t":"F5","X":70.1,"Y":14.13},{"t":"F5","X":60.2,"Y":14.13},{"t":"F5","X":50.29,"Y":14.13},{"t":"F5","X":40.39,"Y":14.13},{"t":"F5","X":30.48,"Y":14.13},{"t":"F5","X":20.57,"Y":14.13},{"t":"F5","X":10.67,"Y":14.13},{"t":"X1","X":65.0,"Y":23.92},{"t":"X1","X":71.0,"Y":23.92},{"t":"X1","X":16.0,"Y":18.53},{"t":"X1","X":58.76,"Y":25.79,"ax":"x","nx":0,"ny":-1},{"t":"X1","X":76.75,"Y":39.03},{"t":"X1","X":59.32,"Y":53.23,"ax":"y","nx":-1,"ny":0},{"t":"X1","X":56.98,"Y":49.17},{"t":"X1","X":16.0,"Y":49.17},{"t":"X1","X":79.19,"Y":32.43,"ax":"y","nx":-1,"ny":0},{"t":"X1","X":55.77,"Y":16.56},{"t":"F2E","X":3.87,"Y":27.65},{"t":"F2","X":9.87,"Y":27.65},{"t":"F2E","X":9.87,"Y":31.65},{"t":"F2","X":3.87,"Y":31.65},{"t":"F2","X":31.01,"Y":39.14},{"t":"F2","X":31.01,"Y":29.33},{"t":"F2E","X":31.01,"Y":35.14},{"t":"F2E","X":3.61,"Y":15.47},{"t":"F2","X":3.61,"Y":11.47},{"t":"F1E","X":40.2,"Y":23.34},{"t":"F1","X":40.2,"Y":29.34},{"t":"F1E","X":40.2,"Y":35.34},{"t":"F1","X":40.2,"Y":41.34},{"t":"F1E","X":40.2,"Y":47.34}],"ctrls":[{"t":"SOS","X":12.46,"Y":19.29,"ax":"x","nx":0,"ny":1},{"t":"SOS","X":4.14,"Y":14.54,"ax":"x","nx":0,"ny":1},{"t":"SOS","X":12.81,"Y":27.93,"ax":"y","nx":-1,"ny":0},{"t":"SOS","X":12.46,"Y":34.29,"ax":"x","nx":0,"ny":1},{"t":"SOS","X":25.52,"Y":44.51,"ax":"x","nx":0,"ny":1},{"t":"SOS","X":18.71,"Y":36.35,"ax":"y","nx":1,"ny":0},{"t":"SOS","X":18.71,"Y":23.76,"ax":"y","nx":1,"ny":0},{"t":"SOS","X":31.74,"Y":49.4,"ax":"x","nx":0,"ny":-1},{"t":"SOS","X":35.56,"Y":37.0,"ax":"y","nx":-1,"ny":0},{"t":"SOS","X":29.55,"Y":30.86,"ax":"x","nx":0,"ny":1},{"t":"SOS","X":30.61,"Y":19.29,"ax":"x","nx":0,"ny":1},{"t":"SOS","X":54.12,"Y":32.24,"ax":"y","nx":-1,"ny":0},{"t":"SOS","X":54.12,"Y":39.64,"ax":"y","nx":-1,"ny":0},{"t":"SOS","X":52.67,"Y":49.21,"ax":"x","nx":0,"ny":1},{"t":"SOS","X":86.54,"Y":19.29,"ax":"x","nx":0,"ny":1},{"t":"SOS","X":86.2,"Y":34.11,"ax":"y","nx":-1,"ny":0},{"t":"SOS","X":64.36,"Y":58.15,"ax":"x","nx":0,"ny":1},{"t":"SA","X":70.75,"Y":19.29,"ax":"x","nx":0,"ny":1},{"t":"SA","X":71.3,"Y":19.29,"ax":"x","nx":0,"ny":1},{"t":"SA","X":71.86,"Y":19.29,"ax":"x","nx":0,"ny":1},{"t":"SA","X":60.06,"Y":32.61,"ax":"y","nx":1,"ny":0},{"t":"SA","X":60.06,"Y":33.16,"ax":"y","nx":1,"ny":0},{"t":"SA","X":60.06,"Y":33.72,"ax":"y","nx":1,"ny":0},{"t":"SA","X":60.06,"Y":34.27,"ax":"y","nx":1,"ny":0},{"t":"SA","X":60.06,"Y":34.58,"ax":"y","nx":1,"ny":0},{"t":"S","X":4.14,"Y":18.88,"ax":"x","nx":0,"ny":1},{"t":"LCP","X":6.65,"Y":21.05,"ax":"y","nx":-1,"ny":0},{"t":"PC","X":0.8,"Y":1.7,"roof":true}],"walls":[["x",2.79,4.62,7.38,0.58],["x",2.46,7.01,7.9,0.45],["x",0.84,3.84,7.98,0.54],["x",5.12,7.01,7.98,0.54],["x",0.4,6.81,8.29,0.35],["x",86.85,90.93,8.42,0.58],["x",86.44,90.93,8.51,0.51],["x",2.31,4.14,14.19,0.57],["x",9.79,11.54,14.14,0.37],["x",19.7,21.45,14.14,0.37],["x",29.61,31.36,14.14,0.37],["x",39.51,41.26,14.14,0.37],["x",49.42,51.17,14.14,0.37],["x",59.33,61.08,14.14,0.37],["x",69.23,70.98,14.14,0.37],["x",79.14,80.89,14.14,0.37],["x",3.53,6.81,18.64,0.35],["x",36.32,38.15,18.68,0.28],["x",7.42,13.35,19.02,0.41],["x",18.66,26.41,19.02,0.41],["x",26.81,31.77,19.02,0.41],["x",35.62,38.2,19.02,0.41],["x",42.2,44.78,19.02,0.41],["x",60.0,72.64,19.02,0.41],["x",76.41,87.48,19.02,0.41],["x",81.12,82.96,21.02,0.3],["x",81.12,82.96,21.39,0.43],["x",45.19,54.19,22.02,0.41],["x",2.33,4.16,22.13,0.41],["x",9.51,11.34,22.08,0.31],["x",0.4,7.01,23.45,0.41],["x",7.42,13.35,23.45,0.41],["x",54.6,55.43,26.06,0.41],["x",58.76,59.6,26.06,0.41],["x",45.19,51.28,27.43,0.41],["x",51.69,54.19,27.43,0.41],["x",60.0,63.34,28.82,0.41],["x",64.01,66.67,28.82,0.41],["x",67.34,70.01,28.82,0.41],["x",70.67,76.0,28.82,0.41],["x",60.67,63.34,29.3,0.55],["x",64.01,66.67,29.3,0.55],["x",67.34,70.01,29.3,0.55],["x",70.67,76.0,29.3,0.55],["x",76.41,79.25,29.38,0.41],["x",27.72,29.55,30.2,0.26],["x",32.25,34.08,30.2,0.26],["x",27.72,29.55,30.56,0.47],["x",32.25,34.08,30.56,0.47],["x",18.66,26.41,31.85,0.41],["x",18.99,21.32,32.2,0.3],["x",18.99,21.32,32.28,0.46],["x",18.99,21.32,32.78,0.54],["x",79.65,87.33,33.11,0.41],["x",10.25,13.35,33.77,0.41],["x",10.25,13.35,34.1,0.25],["x",87.0,88.83,34.74,0.38],["x",45.19,46.64,35.08,0.3],["x",47.92,50.92,35.08,0.3],["x",52.2,54.19,35.08,0.3],["x",79.65,80.88,35.12,0.38],["x",82.16,85.16,35.12,0.38],["x",86.44,89.44,35.12,0.38],["x",51.52,53.86,35.46,0.45],["x",60.0,73.84,35.81,0.47],["x",11.1,12.93,35.99,0.46],["x",30.49,32.32,37.96,0.37],["x",30.49,32.32,38.32,0.36],["x",79.65,90.88,39.51,0.41],["x",10.25,13.35,40.35,0.25],["x",10.25,13.35,40.68,0.41],["x",64.76,66.59,41.78,0.53],["x",60.0,73.84,42.28,0.47],["x",61.51,73.84,42.72,0.4],["x",18.66,21.06,44.25,0.4],["x",24.18,26.41,44.25,0.4],["x",48.1,54.19,44.25,0.4],["x",45.54,47.37,45.71,0.48],["x",45.2,47.7,47.66,0.4],["x",50.84,52.67,48.14,0.57],["x",50.84,52.67,48.87,0.57],["x",21.2,23.03,49.58,0.56],["x",2.72,4.47,49.68,0.36],["x",10.25,13.75,49.66,0.4],["x",18.66,26.41,49.66,0.4],["x",30.44,35.21,49.66,0.4],["x",35.62,38.2,49.66,0.4],["x",42.2,44.78,49.66,0.4],["x",52.1,54.19,49.66,0.4],["x",59.78,60.6,49.66,0.4],["x",60.12,61.0,50.01,0.31],["x",60.12,61.0,50.1,0.47],["x",5.92,7.67,54.54,0.37],["x",15.83,17.58,54.54,0.37],["x",25.74,27.48,54.54,0.37],["x",35.64,37.39,54.54,0.37],["x",45.57,47.32,54.54,0.37],["x",55.46,57.2,54.54,0.37],["x",63.23,65.13,57.88,0.41],["x",65.53,67.1,57.88,0.41],["x",65.88,67.1,59.57,0.31],["y",0.77,7.71,1.96,0.32],["y",0.77,7.71,2.04,0.48],["y",0.77,7.71,2.13,0.32],["y",0.77,7.71,5.54,0.52],["y",19.42,23.25,6.86,0.31],["y",0.71,7.71,7.21,0.4],["y",19.42,23.25,7.21,0.4],["y",33.98,35.65,10.05,0.4],["y",36.26,40.48,10.05,0.4],["y",40.88,49.46,10.05,0.4],["y",54.97,67.91,10.05,0.4],["y",33.98,40.48,10.52,0.55],["y",23.65,28.92,13.11,0.48],["y",32.05,33.57,13.11,0.48],["y",23.65,28.92,13.55,0.4],["y",32.05,33.57,13.55,0.4],["y",0.77,13.71,17.12,0.4],["y",22.75,31.64,18.45,0.4],["y",35.41,44.05,18.45,0.4],["y",44.45,49.46,18.45,0.4],["y",54.97,67.91,19.95,0.4],["y",21.27,24.27,26.45,0.52],["y",19.71,25.01,26.57,0.49],["y",25.55,28.55,26.56,0.3],["y",29.83,31.64,26.56,0.3],["y",34.11,37.11,26.56,0.3],["y",38.39,41.39,26.56,0.3],["y",42.67,44.05,26.56,0.3],["y",44.45,45.67,26.56,0.3],["y",46.95,49.46,26.56,0.3],["y",26.83,28.55,26.86,0.3],["y",29.83,31.83,26.86,0.3],["y",34.11,37.11,26.86,0.3],["y",38.39,41.39,26.86,0.3],["y",42.67,45.67,26.86,0.3],["y",46.95,49.46,26.86,0.3],["y",0.77,2.87,26.97,0.52],["y",4.15,7.15,26.97,0.52],["y",8.43,11.43,26.97,0.52],["y",12.71,13.71,26.97,0.52],["y",54.97,67.91,29.86,0.41],["y",19.23,26.23,35.41,0.41],["y",42.45,49.46,35.41,0.41],["y",19.23,32.67,35.91,0.58],["y",35.8,49.46,35.91,0.58],["y",0.77,13.71,36.93,0.41],["y",54.97,67.91,39.77,0.41],["y",19.23,49.46,44.49,0.58],["y",19.23,21.82,44.99,0.41],["y",22.23,27.23,44.99,0.41],["y",27.63,34.63,44.99,0.41],["y",35.24,44.05,44.99,0.41],["y",44.45,47.46,44.99,0.41],["y",47.86,49.46,44.99,0.41],["y",0.77,13.71,46.84,0.41],["y",44.45,47.46,47.9,0.41],["y",47.86,49.86,47.9,0.41],["y",54.97,67.91,49.67,0.41],["y",25.23,27.23,51.44,0.5],["y",44.45,49.46,53.94,0.5],["y",18.82,21.82,54.39,0.41],["y",26.26,27.23,54.39,0.41],["y",31.03,34.63,54.39,0.41],["y",38.75,44.05,54.39,0.41],["y",44.45,49.46,54.39,0.41],["y",0.77,13.71,56.75,0.41],["y",34.58,37.11,59.55,0.3],["y",53.23,54.23,59.54,0.32],["y",55.51,58.51,59.54,0.32],["y",59.79,62.79,59.54,0.32],["y",64.07,67.91,59.54,0.32],["y",19.23,25.86,59.8,0.41],["y",26.26,29.03,59.8,0.41],["y",32.58,34.58,59.8,0.41],["y",36.05,39.05,59.8,0.41],["y",21.31,24.27,59.89,0.39],["y",25.55,26.61,59.89,0.39],["y",42.92,49.46,60.8,0.41],["y",55.67,57.67,65.33,0.41],["y",0.77,13.71,66.65,0.41],["y",58.08,59.41,67.25,0.31],["y",58.08,59.41,67.64,0.47],["y",35.58,37.11,68.16,0.47],["y",38.39,41.39,68.16,0.47],["y",59.79,62.79,68.13,0.51],["y",55.67,58.51,68.64,0.5],["y",59.79,60.98,68.64,0.5],["y",34.58,42.52,74.05,0.41],["y",42.92,44.13,74.05,0.41],["y",19.23,29.03,76.21,0.41],["y",0.77,13.71,76.56,0.41],["y",29.58,32.9,79.45,0.4],["y",33.31,39.31,79.45,0.4],["y",39.72,42.22,79.45,0.4],["y",8.77,14.32,86.41,0.4],["y",34.11,37.11,86.49,0.46],["y",38.39,39.31,86.49,0.46]],"tiSubtotal":5779.29,"shellSubtotal":4803.77};
+
+/* ------------------------------------------------------------------ *
+ *  FRAMES                                                             *
+ *  Building frame: E1.1 / E1.01 feet (both sheets share it).          *
+ *  Site: ES.1 sheet points (4.5 pt per ft). E2S() maps one to other.  *
+ * ------------------------------------------------------------------ */
+const NW = [1592, 1113], XU = [-0.8341, 0.5518], YU = [-0.5518, -0.8341];
+const E2S = (x, y) => [NW[0] + 4.5 * (x * XU[0] + y * YU[0]), NW[1] + 4.5 * (x * XU[1] + y * YU[1])];
+const [CX, CY] = E2S(45.5, 34);
+const Wd = (sx, sy, h = 0) => new THREE.Vector3((sx - CX) / 4.5, h, (sy - CY) / 4.5);   // sheet pt -> world ft
+const BW = (x, y, h = 0) => Wd(...E2S(x, y), h);                                         // building ft -> world ft
+const THETA = Math.atan2(-XU[1], XU[0]);
+
+const PRICE_LIST = 'Contractor Essentials price list, rev. Oct 19, 2026';
+const H_BLDG = 20, H_PARAPET = 22, H_CANOPY = 12, CEIL = 9;
+
+/* ------------------------------------------------------------------ *
+ *  TYPES. Each: tag, scope, status (ok | cond | no | ctrl), name ...  *
+ * ------------------------------------------------------------------ */
+const TYPES = {};
+const SHELL_TYPES = {
+  AE: { color: '#ffe07a', name: 'Commercial strip light, emergency', mount: 'Surface, fire riser room',
+        spec: 'HE Williams 75R-4-L40/835-VBY-2-EM/10WLP-DIM-UNV', specData: '4 ft, 4,000 lm, 3500K, 28.2 W, 0-10V dim, 120-277V, EM battery (min 650 lm)', specW: 28.2,
+        sub: { brand: 'Starlake', model: 'SS-SP05-4FT60W-H-TCP (EM)', item: 'S-0158', price: 111.60,
+               data: '4 ft strip, factory EM driver (90 min). 60/50/40/30/25 W selectable, 9,600 lm @ 60 W, 3500-6500K, 120-277V, 0-10V, DLC' },
+        setting: '25 W (~4,000 lm), 3500K', veW: 25, flags: ['Confirm the EM driver gives 650 lm or more in emergency mode.'] },
+  DE: { color: '#ff7a7a', name: 'Round canopy light, emergency', mount: 'Canopy soffit',
+        spec: 'Rayon RBS7-10-CTS-UNV-BB, EM', specData: '7" round surface canopy light, 3.6 W, 120-277V, EM battery (min 650 lm)', specW: 3.6,
+        sub: null, setting: '—', flags: ['No small wet-rated round canopy light with a battery on the price list.',
+        'The JEE J-CP75W garage canopy light is several times brighter and has no EM option. The Honya CDL downlights are recessed with no EM option.',
+        'E1.01 (TI) shows these same 9 canopy lights as EX; they are counted once, here.'] },
+  WP1E: { color: '#ff9a5c', name: 'Wall pack, emergency', mount: "Wall, 9' AFF",
+        spec: 'USAL LXT-WM1-PLED-IV-FT-20LED-350mA-30K-UNV-RAL-8019-T-EM2', specData: 'Type IV forward throw, 20 LED @ 350 mA, 3000K, 22 W, 120-277V, EM battery (min 650 lm), RAL 8019 brown', specW: 22,
+        sub: null, setting: '—', ref: 'JEE J-WP10-30W-PCP-3CCT (WP02001, $32.22) at 20 W / 3000K, about 2,600 lm, but no EM option',
+        flags: ['No wall pack with an emergency battery on the price list.'] },
+  SX1: { tag: 'X1', idp: 'Shell X1', color: '#ff3b3b', name: 'Exit sign (shell)', mount: 'Surface, over exit door',
+        spec: 'HE Williams EXIT/EM/CA-R-WF-WHT-D-DRHL-T-WHT-HL-MV', specData: 'Red letters, white housing, battery backup, 120-277V, 4.8 W', specW: 4.8,
+        sub: { brand: 'Honya', model: 'HY-EXS01RED', item: '—', price: 17.05, data: 'Red letters, white housing, Ni-Cad 6V battery, 120/277V' },
+        setting: '—', veW: 2, flags: ['Confirm single vs double face (spec option D) and the other option codes.',
+        'E1.01 (TI) shows these 3 exits as existing (EX); they are not counted again in the TI.'] },
+  WP2: { color: '#ffc845', name: 'Wall pack', mount: "Wall, 18' AFF",
+        spec: 'USAL LXT-WM1-PLED-IV-T3W-40LED-525mA-30K-UNV-RAL-8019-T', specData: 'Type III wide, 40 LED @ 525 mA, 3000K, 65 W, 120-277V, RAL 8019 brown', specW: 65,
+        sub: { brand: 'JEE Lighting', model: 'J-WP09-120W-S4W3C', item: 'WP01001', price: 74.87,
+               data: '60/90/100/120 W selectable, 9,000-18,000 lm, 3000/4000/5000K, 120-277V, 0-10V, photocell, DLC 6.0 Premium' },
+        setting: '60 W (9,000 lm), 3000K', veW: 60, flags: ['Confirm distribution (spec T3W) and bronze finish.'] },
+  S1: { color: '#6dffa8', name: 'Area light, single head', mount: "Pole, 20' mounting height",
+        spec: 'USAL RZR-PLED-IV-FT-40LED-1225mA-30K · pole RTS-18-11-2-90-RAL-9005-S-RBC', specData: 'Type IV forward throw, 40 LED @ 1225 mA, 3000K, 158.9 W; 18\' round tapered steel pole, black', specW: 158.9,
+        sub: { brand: 'Starlake', model: 'SS-AR11-150W-H-TCP-T3', item: 'A-0330', price: 69.35,
+               data: '150/100/70 W selectable, 25,500 lm @ 150 W, Type III, 3000/4000/5000K, 120-277V, 0-10V, photocell, DLC' },
+        setting: '150 W (25,500 lm), 3000K', veW: 150, heads: 1,
+        flags: ['Type III vs spec forward throw. Ask Starlake for a photometric before submitting.',
+                'Arm: AR11 Type F (A-0315, $22.41). Pole: Starlake 20 ft x 4" square (X-0634, $520.80) vs spec 18\' round tapered, black.'] },
+  S2: { color: '#5ce1ff', name: 'Area light, double head', mount: "Pole, 20' mounting height",
+        spec: 'Not in the E0.2 schedule (two-head pole on ES.1)', specData: 'Assumed: two S1 heads back to back', specW: 2 * 158.9,
+        sub: { brand: 'Starlake', model: 'SS-AR11-150W-H-TCP-T3 (x2)', item: 'A-0330', price: 69.35,
+               data: 'Two AR11 heads on Type F arms, one 20 ft square pole' },
+        setting: '2 heads @ 150 W, 3000K', veW: 300, heads: 2, flags: ['Confirm S2 with the engineer.'] },
+};
+const ARM_PRICE = 22.41, POLE_PRICE = 520.80;
+if (COMBINED) for (const [k, T] of Object.entries(SHELL_TYPES)) TYPES[k] = { tag: k, scope: 'Shell', status: T.sub ? 'ok' : 'no', ...T };
+const TI_COLORS = { F1: '#eaf6ff', F1E: '#eaf6ff', F2: '#dff1ff', F2E: '#dff1ff', F3: '#ffe6a8', F3E: '#ffb0a0', F4: '#fff6d8',
+  F5: '#ffd0f0', F6: '#ffd27a', X1: '#ff3b3b', LCP: '#c99bff', PC: '#c99bff', SA: '#c99bff', SOS: '#c99bff', S: '#c99bff' };
+for (const k of TI.order) TYPES[k] = { ...TI.types[k], color: TI_COLORS[k] };
+
+// Shell positions (building ft, from E1.1 / ES.1)
+const BLDG_FX = [
+  ['AE', 1.7, 1.0], ['AE', 3.78, 0.9],
+  ['WP1E', -0.3, 5.6], ['WP1E', -0.3, 25.2], ['WP1E', -0.3, 51.3],
+  ['SX1', 0.5, 25.5], ['SX1', 0.5, 51.5], ['SX1', 80.9, 63.1],
+  ['DE', 79.5, -2.75], ['DE', 87.55, -2.7],
+  ['DE', 69.85, 66.75], ['DE', 77.9, 66.75], ['DE', 86.45, 66.75],
+  ['DE', 69.85, 73.75], ['DE', 77.9, 73.75], ['DE', 83.9, 73.75], ['DE', 89.9, 73.75],
+];
+const WP2_FX = [['WP2', -0.3, 55.8], ['WP2', -0.3, 30.3]];
+const POLES = [
+  ['P1', 'S1', 1202, 423, [300]], ['P2', 'S1', 956, 495, [0]], ['P3', 'S1', 1388, 808, [145]],
+  ['P4', 'S1', 1204, 949, [35]], ['P5', 'S1', 1638, 1182, [215]], ['P6', 'S1', 1440, 1557, [60]],
+  ['P7', 'S2', 1132, 704, [55, 235]],
+];
+const FOOT = [[0, 0], [91, 0], [91, 63.5], [68.5, 63.5], [68.5, 68.2], [0, 68.2]];
+const CANOPIES = [
+  { id: 'Canopy 1', x0: 77.5, x1: 95, y0: -7, y1: 0, cols: [[77.5, -7], [95, -7], [95, 0]] },
+  { id: 'Canopy 2', x0: 68.5, x1: 95, y0: 63.5, y1: 78, cols: [[68.5, 78], [95, 78], [95, 63.5]] },
+];
+
+/* ------------------------------------------------------------------ *
+ *  SCENE                                                              *
+ * ------------------------------------------------------------------ */
+const host = document.getElementById('view');
+const renderer = new THREE.WebGLRenderer({ antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+host.appendChild(renderer.domElement);
+const labelR = new CSS2DRenderer({ element: document.getElementById('labels') });
+labelR.setSize(innerWidth, innerHeight);
+
+const scene = new THREE.Scene();
+const DAY_BG = new THREE.Color('#071a33'), NIGHT_BG = new THREE.Color('#02060d');
+scene.background = DAY_BG;
+const camera = new THREE.PerspectiveCamera(45, innerWidth / innerHeight, 0.2, 3000);
+const controls = new OrbitControls(camera, renderer.domElement);
+controls.enableDamping = true; controls.maxPolarAngle = Math.PI * 0.495; controls.screenSpacePanning = true;
+controls.minDistance = 2; controls.maxDistance = 700;
+
+const hemi = new THREE.HemisphereLight('#cfe6ff', '#0b223f', 1.1); scene.add(hemi);
+const sun = new THREE.DirectionalLight('#ffffff', 1.0); sun.position.set(-80, 160, 60); scene.add(sun);
+
+const L = {};
+for (const k of ['ground', 'building', 'partitions', 'ceiling', 'roof', 'canopies', 'equipment', 'fixtures', 'controls', 'cones']) { L[k] = new THREE.Group(); scene.add(L[k]); }
+function bframe(parent) {
+  const g = new THREE.Group(); g.position.copy(BW(0, 0)); g.rotation.y = THETA; parent.add(g); g.updateMatrixWorld(true); return g;
+}
+const BB = bframe(L.building), BP = bframe(L.partitions), BCe = bframe(L.ceiling), BR = bframe(L.roof), BC = bframe(L.canopies), BE = bframe(L.equipment);
+
+const EDGE = new THREE.LineBasicMaterial({ color: '#7fd4ff', transparent: true, opacity: 0.85 });
+const EDGE_P = new THREE.LineBasicMaterial({ color: '#9fdcff', transparent: true, opacity: 0.5 });
+const xrayMats = [];
+function solidMat(color, base) {
+  const m = new THREE.MeshLambertMaterial({ color, transparent: true, opacity: base, depthWrite: false, side: THREE.DoubleSide });
+  xrayMats.push([m, base]); return m;
+}
+const M = {
+  wall: solidMat('#4d79a8', 0.42), roof: solidMat('#6f8fb0', 0.25), canopy: solidMat('#9fc6e8', 0.5),
+  steel: solidMat('#9fc6e8', 0.9), equip: solidMat('#c0a060', 0.7), door: solidMat('#1b3d66', 0.9),
+  concrete: solidMat('#8a9bb0', 0.9), part: solidMat('#6f9ccc', 0.32), ceil: solidMat('#cfe3f7', 0.12),
+};
+function boxAt(w, h, d, mat, x, y, z, group, edges = EDGE) {
+  const g = new THREE.BoxGeometry(w, h, d);
+  const mesh = new THREE.Mesh(g, mat); mesh.position.set(x, y, z); group.add(mesh);
+  if (edges) { const e = new THREE.LineSegments(new THREE.EdgesGeometry(g), edges); e.position.copy(mesh.position); group.add(e); }
+  return mesh;
+}
+function label(text, pos, cls, group) {
+  const el = document.createElement('div'); el.className = 'lbl ' + cls; el.textContent = text;
+  const o = new CSS2DObject(el); o.position.copy(pos); group.add(o); return o;
+}
+
+/* ground sheets */
+function quadFromCorners(tl, tr, br, bl, mat, y) {
+  const g = new THREE.BufferGeometry();
+  g.setAttribute('position', new THREE.Float32BufferAttribute([tl, tr, br, bl].map(v => [v.x, y, v.z]).flat(), 3));
+  g.setAttribute('uv', new THREE.Float32BufferAttribute([0, 1, 1, 1, 1, 0, 0, 0], 2));
+  g.setIndex([0, 3, 1, 1, 3, 2]); g.computeVertexNormals();
+  return new THREE.Mesh(g, mat);
+}
+const tex = key => {
+  if (!window.SHEETS || !SHEETS[key]) return null;
+  const t = new THREE.TextureLoader().load(SHEETS[key].src);
+  t.colorSpace = THREE.SRGBColorSpace; t.anisotropy = renderer.capabilities.getMaxAnisotropy(); return t;
+};
+const sheetQ = {};
+let siteMat = null;
+if (COMBINED) {
+  siteMat = new THREE.MeshBasicMaterial({ color: '#ffffff', map: tex('site'), side: THREE.DoubleSide });
+  sheetQ.site = quadFromCorners(Wd(860, 360), Wd(1740, 360), Wd(1740, 1620), Wd(860, 1620), siteMat, 0);
+  sheetQ.plan = quadFromCorners(BW(-4, -10), BW(99, -10), BW(99, 81), BW(-4, 81),
+    new THREE.MeshBasicMaterial({ map: tex('plan'), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), 0.04);
+}
+sheetQ.ti = quadFromCorners(BW(-4, -10), BW(99, -10), BW(99, 81), BW(-4, 81),
+  new THREE.MeshBasicMaterial({ map: tex('ti'), transparent: true, blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide }), 0.05);
+const solid = new THREE.Mesh(sheetQ.ti.geometry, new THREE.MeshBasicMaterial({ color: '#0a1e3a', side: THREE.DoubleSide }));
+solid.position.y = -0.02; sheetQ.solid = solid;
+for (const q of Object.values(sheetQ)) L.ground.add(q);
+const grid = new THREE.GridHelper(600, 60, '#173a63', '#0f2c4f'); grid.position.y = -0.08; scene.add(grid);
+const SHEET_OPTS = COMBINED
+  ? [['site+ti', 'ES.1 site + E1.01 TI lighting', ['site', 'ti']], ['site+plan', 'ES.1 site + E1.1 shell plan', ['site', 'plan']],
+     ['site', 'ES.1 site plan', ['site']], ['ti', 'E1.01 TI lighting plan', ['solid', 'ti']], ['none', 'None', []]]
+  : [['ti', 'E1.01 TI lighting plan', ['solid', 'ti']], ['none', 'None', ['solid']]];
+const sheetSel = document.getElementById('sheet');
+sheetSel.innerHTML = SHEET_OPTS.map(([v, t]) => `<option value="${v}">${t}</option>`).join('');
+function setSheet(v) {
+  const on = SHEET_OPTS.find(o => o[0] === v)[2];
+  for (const [k, q] of Object.entries(sheetQ)) q.visible = on.includes(k);
+}
+
+/* building shell (exterior walls + parapet) */
+const holeIn = 0.67;
+const INNER = [[holeIn, holeIn], [91 - holeIn, holeIn], [91 - holeIn, 63.5 - holeIn], [68.5 - holeIn, 63.5 - holeIn],
+               [68.5 - holeIn, 68.2 - holeIn], [holeIn, 68.2 - holeIn]];
+{
+  const shape = new THREE.Shape(FOOT.map(([x, y]) => new THREE.Vector2(x, -y)));
+  shape.holes.push(new THREE.Path(INNER.map(([x, y]) => new THREE.Vector2(x, -y))));
+  const g = new THREE.ExtrudeGeometry(shape, { depth: H_PARAPET, bevelEnabled: false }); g.rotateX(-Math.PI / 2);
+  BB.add(new THREE.Mesh(g, M.wall));
+  BB.add(new THREE.LineSegments(new THREE.EdgesGeometry(g, 30), EDGE));
+  const rs = new THREE.Shape(INNER.map(([x, y]) => new THREE.Vector2(x, -y)));
+  const rg = new THREE.ExtrudeGeometry(rs, { depth: 0.6, bevelEnabled: false }); rg.rotateX(-Math.PI / 2); rg.translate(0, H_BLDG, 0);
+  BR.add(new THREE.Mesh(rg, M.roof));
+  const cg = new THREE.ShapeGeometry(rs); cg.rotateX(-Math.PI / 2); cg.translate(0, CEIL + 0.02, 0);
+  BCe.add(new THREE.Mesh(cg, M.ceil));
+  for (const [x, y, along] of [[-0.05, 5.6, 'y'], [-0.05, 25.5, 'y'], [-0.05, 51.5, 'y'], [80.9, 63.55, 'x']]) {
+    if (along === 'y') boxAt(0.2, 7, 3, M.door, x - 0.1, 3.5, y, BB, false); else boxAt(3, 7, 0.2, M.door, x, 3.5, y + 0.1, BB, false);
+  }
+  label(COMBINED ? 'Dental office (shell + TI)' : 'Dental office interior (TI)', new THREE.Vector3(40, H_PARAPET + 3, 34), 'st', BB);
+}
+/* interior partitions traced from the E1.01 background */
+for (const [ax, a, b, c, t] of TI.walls) {
+  const len = b - a, th = Math.max(t, 0.35), h = CEIL + 0.5;
+  if (ax === 'x') boxAt(len, h, th, M.part, (a + b) / 2, h / 2, c, BP, EDGE_P);
+  else boxAt(th, h, len, M.part, c, h / 2, (a + b) / 2, BP, EDGE_P);
+}
+if (COMBINED) {
+  for (const c of CANOPIES) {
+    boxAt(c.x1 - c.x0, 1.4, c.y1 - c.y0, M.canopy, (c.x0 + c.x1) / 2, H_CANOPY + 0.7, (c.y0 + c.y1) / 2, BC);
+    for (const [x, y] of c.cols) boxAt(0.8, H_CANOPY, 0.8, M.steel, x - Math.sign(x - (c.x0 + c.x1) / 2) * 0.4, H_CANOPY / 2, y - Math.sign(y - (c.y0 + c.y1) / 2) * 0.4, BC);
+    label(c.id, new THREE.Vector3((c.x0 + c.x1) / 2, H_CANOPY + 2.6, (c.y0 + c.y1) / 2), 'st', BC);
+  }
+  boxAt(2.9, 7.5, 5.7, M.equip, -1.8, 3.75, 18.6, BE);
+  label('Main switchboard MSA', new THREE.Vector3(-1.8, 8.6, 18.6), 'st', BE);
+}
+
+/* ------------------------------------------------------------------ *
+ *  FIXTURES + CONTROLS                                                *
+ * ------------------------------------------------------------------ */
+const FIXTURES = [], pickables = [], counters = {};
+const coneMats = {};
+function coneMat(type) {
+  return coneMats[type] ||= new THREE.MeshBasicMaterial({ color: TYPES[type].color, transparent: true, opacity: 0.1,
+    blending: THREE.AdditiveBlending, depthWrite: false, side: THREE.DoubleSide });
+}
+function addCone(type, from, to, radius, sides = 20) {
+  const dir = to.clone().sub(from), h = dir.length();
+  const g = new THREE.ConeGeometry(radius, h, sides, 1, true); g.translate(0, -h / 2, 0);
+  const m = new THREE.Mesh(g, coneMat(type)); m.position.copy(from);
+  m.quaternion.setFromUnitVectors(new THREE.Vector3(0, -1, 0), dir.normalize()); L.cones.add(m);
+}
+const HOUSING = new THREE.MeshLambertMaterial({ color: '#2a3a4d' });
+const EM_MAT = new THREE.MeshBasicMaterial({ color: '#ff2a2a' });
+const CTRL_MAT = new THREE.MeshBasicMaterial({ color: '#b07cff' });
+const lensMats = {};
+const lensMat = type => lensMats[type] ||= new THREE.MeshBasicMaterial({ color: TYPES[type].color, side: THREE.DoubleSide });
+const HIT_GEO = { big: new THREE.SphereGeometry(2.4, 8, 6), mid: new THREE.SphereGeometry(1.3, 8, 6), small: new THREE.SphereGeometry(0.85, 8, 6) };
+const HIT_MAT = new THREE.MeshBasicMaterial({ visible: false });
+
+function register(type, head, g, mountNote, plan, layer = L.fixtures, hit = 'mid', dy = 0.9) {
+  const T = TYPES[type];
+  counters[type] = (counters[type] || 0) + 1;
+  const id = `${T.idp || T.tag}-${counters[type]}`;
+  const h = new THREE.Mesh(HIT_GEO[hit], HIT_MAT); h.position.copy(head); h.userData.id = id; g.add(h); pickables.push(h);
+  const lb = label(T.tag, head.clone().add(new THREE.Vector3(0, dy, 0)), 'fx ' + T.status, g);
+  layer.add(g);
+  FIXTURES.push({ id, type, head, group: g, mountNote, plan, layer, lb, far: hit === 'big' || T.scope === 'Shell' });
+}
+
+/* shell fixtures (combined only) */
+if (COMBINED) {
+  for (const [type, x, y] of [...BLDG_FX, ...WP2_FX]) {
+    const T = TYPES[type], g = new THREE.Group(), lens = lensMat(type), fb = bframe(g);
+    let head, note;
+    if (type === 'AE') {
+      boxAt(4, 0.25, 0.33, HOUSING, x + 2, 12.1, y, fb, false);
+      boxAt(3.9, 0.05, 0.26, lens, x + 2, 11.96, y, fb, false);
+      boxAt(0.6, 0.06, 0.34, EM_MAT, x + 3.6, 12.26, y, fb, false);
+      head = BW(x + 2, y, 12); addCone(type, head, BW(x + 2, y, 0), 6);
+      note = "Surface strip in the fire riser room (shown at 12', assumed)";
+    } else if (type === 'DE') {
+      head = BW(x, y, H_CANOPY - 0.05);
+      const d = new THREE.Mesh(new THREE.CylinderGeometry(0.29, 0.29, 0.25, 20), HOUSING); d.position.set(x, H_CANOPY - 0.12, y); fb.add(d);
+      const ln = new THREE.Mesh(new THREE.CylinderGeometry(0.25, 0.25, 0.03, 20), lens); ln.position.set(x, H_CANOPY - 0.26, y); fb.add(ln);
+      const em = new THREE.Mesh(new THREE.BoxGeometry(0.3, 0.06, 0.06), EM_MAT); em.position.set(x, H_CANOPY - 0.2, y + 0.28); fb.add(em);
+      addCone(type, head, BW(x, y, 0), 6);
+      note = `Surface, under ${y < 0 ? 'canopy 1' : 'canopy 2'} soffit (12', assumed)`;
+    } else if (type === 'WP1E' || type === 'WP2') {
+      const h = type === 'WP2' ? 18 : 9, big = type === 'WP2';
+      const [w, hh, d] = big ? [1.4, 1.1, 0.75] : [0.9, 0.75, 0.55];
+      boxAt(d, hh, w, HOUSING, x - d / 2 + 0.3, h, y, fb, false);
+      boxAt(d * 0.8, 0.04, w * 0.85, lens, x - d / 2 + 0.3, h - hh / 2 - 0.02, y, fb, false);
+      if (!big) boxAt(0.06, 0.12, w * 0.9, EM_MAT, x - d + 0.28, h + hh / 2 - 0.1, y, fb, false);
+      head = BW(x - d / 2 + 0.3, y, h);
+      addCone(type, head, BW(x - (big ? 22 : 9), y, 0), big ? 18 : 8);
+      note = `Wall mounted on the switchboard wall at ${h}' AFF`;
+    } else if (type === 'SX1') {
+      const along = y > 60 ? 'x' : 'y';
+      if (along === 'y') { boxAt(0.2, 0.75, 1.15, HOUSING, x + 0.2, 8.2, y, fb, false); boxAt(0.22, 0.4, 0.8, lens, x + 0.25, 8.2, y, fb, false); }
+      else { boxAt(1.15, 0.75, 0.2, HOUSING, x, 8.2, y - 0.2, fb, false); boxAt(0.8, 0.4, 0.22, lens, x, 8.2, y - 0.25, fb, false); }
+      head = BW(x, y, 8.2);
+      note = 'Inside, over the exit door (~8\', assumed)';
+    }
+    register(type, head, g, note, `E1.1 / ES.1, building (${x}, ${y}) ft`, L.fixtures, 'mid', type === 'SX1' ? -1.2 : 0.9);
+  }
+  for (const [name, type, sx, sy, aims] of POLES) {
+    const g = new THREE.Group(), lens = lensMat(type), base = Wd(sx, sy);
+    boxAt(2, 2, 2, M.concrete, base.x, 1, base.z, g, false);
+    const pole = new THREE.Mesh(new THREE.CylinderGeometry(0.17, 0.17, 18, 4), new THREE.MeshLambertMaterial({ color: '#2a3542' }));
+    pole.rotation.y = Math.PI / 4; pole.position.set(base.x, 2 + 9, base.z); g.add(pole);
+    for (const a of aims) {
+      const r = a * Math.PI / 180, dir = new THREE.Vector3(Math.cos(r), 0, -Math.sin(r)), rotY = Math.atan2(-dir.z, dir.x);
+      const arm = new THREE.Mesh(new THREE.BoxGeometry(1.6, 0.25, 0.25), pole.material);
+      arm.position.copy(base).addScaledVector(dir, 0.8).setY(19.9); arm.rotation.y = rotY; g.add(arm);
+      const hp = base.clone().addScaledVector(dir, 1.6 + 0.9).setY(20);
+      const hb = new THREE.Mesh(new THREE.BoxGeometry(1.8, 0.3, 1.0), HOUSING); hb.position.copy(hp); hb.rotation.y = rotY; g.add(hb);
+      const ln = new THREE.Mesh(new THREE.BoxGeometry(1.5, 0.05, 0.85), lens); ln.position.copy(hp).setY(19.83); ln.rotation.y = rotY; g.add(ln);
+      addCone(type, hp, hp.clone().addScaledVector(dir, 22).setY(0), 30);
+    }
+    label(name, base.clone().setY(2.6), 'st', g);
+    register(type, base.clone().setY(20), g, `Pole ${name}: 18' pole on 2' base (20' MH per ES.1)`, `ES.1 sheet point (${sx}, ${sy})`, L.fixtures, 'big', 1.6);
+  }
+}
+
+/* TI fixtures (E1.01) */
+const CAN = { r4: new THREE.CylinderGeometry(0.3, 0.3, 0.35, 18), l4: new THREE.CircleGeometry(0.26, 18),
+              r2: new THREE.CylinderGeometry(0.17, 0.17, 0.3, 14), l2: new THREE.CircleGeometry(0.14, 14) };
+CAN.l4.rotateX(Math.PI / 2); CAN.l2.rotateX(Math.PI / 2);
+const ROT = { x: 0, y: Math.PI / 2 };
+for (const f of TI.fixtures) {
+  const type = f.t, T = TYPES[type], g = new THREE.Group(), fb = bframe(g), lens = lensMat(type);
+  const { X: x, Y: y } = f;
+  let head = BW(x, y, CEIL), note = `Recessed in the ceiling (${CEIL}' assumed)`, dy = 0.7;
+  if (type === 'F1' || type === 'F1E' || type === 'F2' || type === 'F2E') {
+    const w = type.startsWith('F1') ? 4 : 2;
+    boxAt(w, 0.3, 2, HOUSING, x, CEIL + 0.17, y, fb, false);
+    boxAt(w - 0.12, 0.03, 1.88, lens, x, CEIL - 0.01, y, fb, false);
+    if (type.endsWith('E')) boxAt(0.5, 0.12, 0.3, EM_MAT, x + w / 2 - 0.4, CEIL + 0.38, y, fb, false);
+    addCone(type, head, BW(x, y, 0), w === 4 ? 7 : 6);
+    note = `${w === 4 ? '2x4' : '2x2'} lay-in in the ceiling grid (${CEIL}' assumed)`;
+  } else if (type === 'F3' || type === 'F3E' || type === 'F4' || type === 'F5') {
+    const small = type === 'F5';
+    const can = new THREE.Mesh(small ? CAN.r2 : CAN.r4, HOUSING); can.position.set(x, CEIL + 0.18, y); fb.add(can);
+    const ln = new THREE.Mesh(small ? CAN.l2 : CAN.l4, lens); ln.position.set(x, CEIL - 0.01, y); fb.add(ln);
+    if (type === 'F3E') boxAt(0.4, 0.12, 0.25, EM_MAT, x + 0.45, CEIL + 0.2, y, fb, false);
+    addCone(type, head, BW(x, y, 0), small ? 2.6 : 4.2, 16);
+    note = `${small ? '2"' : '4"'} recessed downlight (${CEIL}' ceiling assumed)`;
+  } else if (type === 'F6') {
+    const stem = boxAt(0.05, 1.4, 0.05, HOUSING, x, CEIL - 0.7, y, fb, false);
+    const ring = new THREE.Mesh(new THREE.TorusGeometry(1.2, 0.08, 8, 40), lens); ring.rotation.x = Math.PI / 2; ring.position.set(x, CEIL - 1.5, y); fb.add(ring);
+    const ring2 = new THREE.Mesh(new THREE.TorusGeometry(0.7, 0.06, 8, 32), lens); ring2.rotation.x = Math.PI / 2; ring2.position.set(x, CEIL - 1.9, y); fb.add(ring2);
+    head = BW(x, y, CEIL - 1.5); dy = 1.1;
+    addCone(type, head, BW(x, y, 0), 6);
+    note = `Suspended decorative fixture, about ${CEIL - 1.5}' to the ring (drop assumed)`;
+  } else if (type === 'X1') {
+    const ax = f.ax || 'x', nx = f.nx || 0, ny = f.ny || 0;
+    const sw = ax === 'x' ? [1.15, 0.75, 0.2] : [0.2, 0.75, 1.15];
+    const cx = x + nx * 0.1, cy = y + ny * 0.1;
+    boxAt(...sw, HOUSING, cx, 7.9, cy, fb, false);
+    const lw = ax === 'x' ? [0.8, 0.4, 0.22] : [0.22, 0.4, 0.8];
+    boxAt(...lw, lens, cx + nx * 0.02, 7.9, cy + ny * 0.02, fb, false);
+    for (const s of [-1, 1]) {   // emergency heads
+      const hx = ax === 'x' ? cx + s * 0.4 : cx + nx * 0.2, hy = ax === 'x' ? cy + ny * 0.2 : cy + s * 0.4;
+      const hd = new THREE.Mesh(new THREE.SphereGeometry(0.12, 10, 8), new THREE.MeshBasicMaterial({ color: '#fff3c4' })); hd.position.set(hx, 7.45, hy); fb.add(hd);
+    }
+    head = BW(cx, cy, 7.9); dy = -1.0;
+    note = f.ax ? "Exit / emergency combo on the wall at the door (~8', assumed)" : "Exit / emergency combo (~8', assumed; wall not traced)";
+  }
+  register(type, head, g, note, `E1.01, building (${x.toFixed(1)}, ${y.toFixed(1)}) ft`, L.fixtures, 'small', dy);
+}
+/* TI lighting controls */
+for (const c of TI.ctrls) {
+  const type = c.t, g = new THREE.Group(), fb = bframe(g);
+  const { X: x, Y: y } = c, ax = c.ax || 'x', nx = c.nx || 0, ny = c.ny || 0;
+  let head, note, dy = 0.8;
+  if (c.roof) {
+    boxAt(0.12, 0.8, 0.12, HOUSING, x, H_BLDG + 1, y, fb, false);
+    const pc = new THREE.Mesh(new THREE.CylinderGeometry(0.22, 0.22, 0.35, 14), CTRL_MAT); pc.position.set(x, H_BLDG + 1.55, y); fb.add(pc);
+    head = BW(x, y, H_BLDG + 1.5); dy = 1.2;
+    note = 'Rooftop photocell for the LCP. Location assumed (not shown on the roof plan), near the NW corner by the electrical room.';
+  } else if (type === 'LCP') {
+    const d = [ax === 'x' ? 2 : 0.45, 3.5, ax === 'x' ? 0.45 : 2];
+    boxAt(...d, CTRL_MAT, x + nx * 0.23, 4.25, y + ny * 0.23, fb, false);
+    boxAt(d[0] + 0.02, 0.05, d[2] + 0.02, HOUSING, x + nx * 0.23, 5.2, y + ny * 0.23, fb, false);
+    head = BW(x + nx * 0.23, y + ny * 0.23, 4.5); dy = 2.6;
+    note = 'Wall-mounted relay panel in the electrical room (size and height assumed)';
+  } else {
+    const d = [ax === 'x' ? 0.3 : 0.1, 0.45, ax === 'x' ? 0.1 : 0.3];
+    const gang = type === 'SA' ? 1 : 1;
+    boxAt(...d.map((v, i) => i === (ax === 'x' ? 0 : 2) ? v * gang : v), CTRL_MAT, x + nx * 0.05, 4, y + ny * 0.05, fb, false);
+    head = BW(x + nx * 0.05, y + ny * 0.05, 4); dy = 0.7;
+    note = `${type === 'SOS' ? 'Occupancy / vacancy wall switch' : type === 'SA' ? 'Switch / zone control station' : '20A switch'} at 4' AFF (height assumed)`;
+  }
+  register(type, head, g, note, c.roof ? 'Roof (assumed)' : `E1.01, building (${x.toFixed(1)}, ${y.toFixed(1)}) ft`, L.controls, 'small', dy);
+}
+
+/* selection marker */
+const ring = new THREE.Mesh(new THREE.RingGeometry(1.0, 1.35, 40), new THREE.MeshBasicMaterial({ color: '#ffffff', transparent: true, opacity: 0.9, side: THREE.DoubleSide, depthTest: false }));
+ring.rotation.x = -Math.PI / 2; ring.visible = false; ring.renderOrder = 10; scene.add(ring);
+
+/* ------------------------------------------------------------------ *
+ *  UI                                                                 *
+ * ------------------------------------------------------------------ */
+document.getElementById('title').textContent = COMBINED ? 'Grand Montecito Dental – Shell + Interior' : 'Grand Montecito Dental – Interior (TI)';
+document.getElementById('nav-' + MODE).setAttribute('aria-current', 'page');
+document.title = COMBINED ? 'Grand Montecito Lighting – Shell + Interior' : 'Grand Montecito Lighting – Interior';
+
+const V = (x, y, z) => new THREE.Vector3(x, y, z);
+const eye = (tx, ty, th, px, py, ph) => ({ t: BW(tx, ty, th), d: BW(px, py, ph).sub(BW(tx, ty, th)) });
+const c0 = BW(45.5, 34);
+const VIEWS = {
+  'Overall':             { t: c0.clone(), d: COMBINED ? V(-110, 150, 160) : V(-62, 88, 92) },
+  'Plan (top)':          { t: c0.clone(), d: V(0, COMBINED ? 330 : 200, 0.01) },
+  'Clinical hallway':    eye(48, 16.4, 6, 9, 16.4, 7.2),
+  'Treatment rooms':     eye(40, 5, 3, 40, 32, 30),
+  'Sterilization & lab': eye(38, 33, 3, 18, 52, 24),
+  'Check-out & office':  eye(72, 32, 3, 52, 14, 22),
+  'Patient lounge':      eye(80, 55, 3, 60, 40, 15),
+  'Electrical room':     eye(5, 20.5, 4, 16, 32, 13),
+};
+if (COMBINED) Object.assign(VIEWS, {
+  'Switchboard wall': { t: BW(0, 30, 8), d: BW(-60, 30, 0).sub(BW(0, 30, 0)).add(V(0, 22, 0)) },
+  'Canopy 2':         { t: BW(80, 70, 8), d: BW(80, 110, 0).sub(BW(80, 70, 0)).add(V(0, 12, 0)) },
+  'Parking & poles':  { t: Wd(1200, 700, 4), d: V(-90, 120, 140) },
+});
+const viewsEl = document.getElementById('views');
+for (const name of Object.keys(VIEWS)) {
+  const b = document.createElement('button'); b.textContent = name; b.onclick = () => flyTo(name); viewsEl.appendChild(b);
+}
+let anim = null;
+function flyTo(name, target, dist) {
+  const v = name ? VIEWS[name] : null, t = target || v.t, d = dist || v.d;
+  anim = { t0: performance.now(), fromP: camera.position.clone(), fromT: controls.target.clone(), toT: t.clone(), toP: t.clone().add(d) };
+}
+
+const LAYERS = [['building', 'Exterior walls'], ['partitions', 'Interior partitions (traced)'], ['ceiling', `Ceiling plane (${CEIL}')`, false],
+  ['roof', 'Roof', false], ...(COMBINED ? [['canopies', 'Canopies'], ['equipment', 'Electrical equipment']] : []),
+  ['fixtures', 'Light fixtures'], ['controls', 'Lighting controls'], ['cones', 'Light spread', false],
+  ['fxlabels', 'Fixture tags'], ['ctlabels', 'Control tags'], ['stlabels', 'Structure labels']];
+const layersEl = document.getElementById('layers');
+for (const [k, txt, def = true] of LAYERS) {
+  const id = 'ly-' + k;
+  layersEl.insertAdjacentHTML('beforeend', `<label class="chk"><input type="checkbox" id="${id}" ${def ? 'checked' : ''}> ${txt}</label>`);
+  const apply = () => {
+    const c = document.getElementById(id).checked;
+    if (k === 'fxlabels') document.body.classList.toggle('hide-fx-labels', !c);
+    else if (k === 'ctlabels') document.body.classList.toggle('hide-ct-labels', !c);
+    else if (k === 'stlabels') document.body.classList.toggle('hide-st-labels', !c);
+    else L[k].visible = c;
+  };
+  document.getElementById(id).addEventListener('change', apply); apply();
+}
+sheetSel.addEventListener('change', e => setSheet(e.target.value));
+const xray = document.getElementById('xray');
+const applyXray = () => { const f = 1.25 - xray.value / 100; for (const [m, base] of xrayMats) m.opacity = Math.min(1, base * f * 1.15); };
+xray.addEventListener('input', applyXray); applyXray();
+
+let night = false;
+document.getElementById('night').onclick = e => {
+  night = !night; e.target.textContent = night ? 'On' : 'Off'; e.target.classList.toggle('on', night);
+  scene.background = night ? NIGHT_BG : DAY_BG; hemi.intensity = night ? 0.25 : 1.1; sun.intensity = night ? 0.1 : 1.0;
+  if (siteMat) siteMat.color.set(night ? '#5a6b80' : '#ffffff');
+  for (const c of Object.values(coneMats)) c.opacity = night ? 0.2 : 0.1;
+  const cb = document.getElementById('ly-cones'); if (night && !cb.checked) { cb.checked = true; cb.dispatchEvent(new Event('change')); }
+};
+
+/* schedule + pricing */
+const fmt = n => n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const onPlan = k => FIXTURES.filter(f => f.type === k).length;
+const qty = k => TYPES[k].qty ?? onPlan(k);        // TI: Helix count sheet; shell: plan count (they match)
+let shellTotal = 0, tiTotal = 0;
+const row = k => {
+  const T = TYPES[k], q = qty(k), n = T.heads ? q * T.heads : q, ext = T.sub ? n * T.sub.price : null;
+  if (ext) { if (T.scope === 'Shell') shellTotal += ext; else tiTotal += ext; }
+  const prod = T.status === 'ctrl' ? '<span class="ctl">SUBSTITUTE NEEDED</span><br><span class="note">Michelon to add</span>'
+    : T.sub ? `${T.sub.brand} ${T.sub.model}<br><span class="note">${T.setting}${T.status === 'cond' ? ' · <span class="cnd">conditional (6" for 4")</span>' : ''}</span>`
+    : '<span class="bad">NO SUITABLE SUB</span><br><span class="note">to be sourced</span>';
+  const qn = q !== onPlan(k) && T.scope !== 'Shell' ? `${q}<br><span class="note">${onPlan(k)} on plan</span>` : `${q}${k === 'S2' ? ' (2 hd)' : ''}`;
+  return `<tr class="${T.status === 'no' ? 'no' : T.status === 'ctrl' ? 'ctrl' : ''}"><td><span class="tag ${T.status}">${T.tag}</span></td><td>${qn}</td>
+    <td>${prod}</td><td class="r">${ext ? '$' + fmt(ext) : 'TBD'}</td></tr>`;
+};
+let html = '<tr><th>Type</th><th>Qty</th><th>Michelon VE product</th><th class="r">Ext</th></tr>';
+if (COMBINED) {
+  const heads = onPlan('S1') + 2 * onPlan('S2'), poles = onPlan('S1') + onPlan('S2');
+  html += '<tr class="sec"><th colspan="4">Shell (Quote 1)</th></tr>' + Object.keys(SHELL_TYPES).map(row).join('');
+  shellTotal += heads * ARM_PRICE + poles * POLE_PRICE;
+  html += `<tr><td colspan="3">AR11 Type F arms × ${heads}</td><td class="r">$${fmt(heads * ARM_PRICE)}</td></tr>
+    <tr><td colspan="3">20 ft square poles × ${poles}</td><td class="r">$${fmt(poles * POLE_PRICE)}</td></tr>
+    <tr class="tot"><th colspan="3">Shell subtotal</th><th class="r">$${fmt(shellTotal)}</th></tr>`;
+}
+const fxKeys = TI.order.filter(k => TYPES[k].status !== 'ctrl'), ctKeys = TI.order.filter(k => TYPES[k].status === 'ctrl');
+html += '<tr class="sec"><th colspan="4">Interior TI (Quote 2) – fixtures</th></tr>' + fxKeys.map(row).join('');
+html += `<tr class="tot"><th colspan="3">TI subtotal (priced items)</th><th class="r">$${fmt(tiTotal)}</th></tr>`;
+html += '<tr class="sec"><th colspan="4">Interior TI – lighting controls</th></tr>' + ctKeys.map(row).join('');
+if (COMBINED) html += `<tr class="tot"><th colspan="3">Combined subtotal (priced items)</th><th class="r">$${fmt(shellTotal + tiTotal)}</th></tr>`;
+document.getElementById('sched').innerHTML = html;
+{
+  const keys = Object.keys(TYPES).filter(k => TYPES[k].sub);
+  const refW = keys.reduce((s, k) => s + qty(k) * TYPES[k].specW, 0), veW = keys.reduce((s, k) => s + qty(k) * TYPES[k].veW, 0);
+  const excl = Object.keys(TYPES).filter(k => TYPES[k].status === 'no').map(k => `<b>${TYPES[k].tag} ×${qty(k)}</b>`).join(', ');
+  document.getElementById('wattsum').innerHTML = `Subtotals exclude ${excl} and all lighting controls (to be sourced / added).
+    F3 is priced as a 6" downlight against a 4" spec and needs architect / engineer approval. Connected load of the priced
+    types: spec <b>${Math.round(refW).toLocaleString()} W</b> → VE <b>${Math.round(veW).toLocaleString()} W</b>. Prices: ${PRICE_LIST}.`;
+}
+const lists = document.getElementById('fxlists');
+const COLOR_BORDER = { ok: '#2f9a63', cond: '#ffb547', no: '#ff5d5d', ctrl: '#c99bff' };
+for (const [k, T] of Object.entries(TYPES)) {
+  const fx = FIXTURES.filter(f => f.type === k); if (!fx.length) continue;
+  const d = document.createElement('details'); d.className = 'fxl';
+  d.innerHTML = `<summary><span class="tag ${T.status}">${T.tag}</span> ${T.scope === 'Shell' && COMBINED ? 'shell · ' : ''}${T.name.split(' (')[0]} · ${fx.length} in model</summary>`;
+  const div = document.createElement('div'); div.className = 'fxlist';
+  for (const f of fx) {
+    const b = document.createElement('button'); b.textContent = f.id; b.style.borderColor = COLOR_BORDER[T.status];
+    b.onclick = () => select(f.id, true); div.appendChild(b);
+  }
+  d.appendChild(div); lists.appendChild(d);
+}
+document.getElementById('basis').innerHTML = `
+  <p class="note">Interior from the TI electrical CD review set (10/27/2026): <b>E1.01</b> lighting plan and its fixture schedule.
+    Pricing quantities follow the Helix count sheet (Nov 20, 2026).${COMBINED ? ' Shell from the QA Consulting Engineers set (job 25062, Delta 1): E0.2, E1.1 and ES.1.' : ''}
+    1 grid square = 10 ft.</p>
+  <p class="note warn">Assumed or approximate (not on the electrical set):</p>
+  <ul class="note">
+    <li>Ceiling height ${CEIL}' (no reflected ceiling plan in the electrical set). Roof structure at ${H_BLDG}'.</li>
+    <li>Interior partitions are traced from the E1.01 background and are approximate; some short walls and door openings are missing.</li>
+    <li>Switches and sensors at 4' AFF on the nearest wall. LCP size and height assumed.</li>
+    <li>Photocell (PC) location is not shown; placed on the roof near the NW corner.</li>
+    <li>F6 chandelier drop assumed. Exit combos at ~8'.</li>
+    <li>F3E: ${onPlan('F3E')} on E1.01 vs ${qty('F3E')} on the count sheet; pricing uses the count sheet.</li>
+    <li>E1.01 tags 2 exits X1 and 6 X2 (X2 is not in the schedule); 2 are untagged. All 10 priced as the X1 combo.</li>
+    <li>E1.01's EX canopy lights (×9) are the shell DE lights${COMBINED ? ', counted once in the shell section' : ' (shell quote); not shown here'}. Its 3 EX exit signs are existing shell X1.</li>
+    ${COMBINED ? "<li>Shell: building 20' with a 2' parapet, canopy soffits 12', poles 18' on a 2' base, S2 drawn as two S1 heads.</li>" : ''}
+  </ul>`;
+
+/* picking + info panel */
+const info = document.getElementById('info'), ray = new THREE.Raycaster(), mouse = new THREE.Vector2();
+let selected = null, downAt = null;
+function select(id, fly) {
+  const f = FIXTURES.find(f => f.id === id); if (!f) return;
+  selected = f; const T = TYPES[f.type], S = T.sub;
+  ring.position.set(f.head.x, 0.1, f.head.z); ring.visible = true;
+  const qn = qty(f.type) !== onPlan(f.type) ? `${qty(f.type)} on the count sheet, ${onPlan(f.type)} on the plan` : `${qty(f.type)} of this type`;
+  let body;
+  if (T.status === 'ctrl') {
+    body = `<h4 class="ih">Specified (E1.01)</h4>
+      <dl><dt>Device</dt><dd>${T.name}</dd><dt>Plan tag</dt><dd>${T.tag}</dd><dt>Where</dt><dd>${T.where}</dd></dl>
+      <div class="box ctrl"><b>SUBSTITUTE NEEDED.</b> Lighting controls are in this bid, but the Michelon price list has none.
+        Michelon to add the substitute and price later.</div>`;
+  } else {
+    body = `<h4 class="ih">Specified (${T.scope === 'Shell' ? 'E0.2' : 'E1.01 schedule'})</h4>
+      <dl><dt>Catalog</dt><dd>${T.spec}</dd><dt>Data</dt><dd>${T.specData}</dd><dt>Mounting</dt><dd>${T.mount}</dd></dl>
+      ${S ? `<h4 class="ih">Michelon VE substitute</h4>
+        <dl><dt>Product</dt><dd>${S.brand} ${S.model}</dd><dt>Item</dt><dd>${S.item || '—'}</dd><dt>Setting</dt><dd>${T.setting}</dd>
+          <dt>Data</dt><dd>${S.data}</dd><dt>Unit price</dt><dd>$${fmt(S.price)}${T.heads === 2 ? ' per head' : ''}</dd>
+          <dt>Watts</dt><dd>${T.specW} W spec → ${T.veW} W VE</dd></dl>
+        ${T.status === 'cond' ? '<div class="box cond"><b>CONDITIONAL substitute:</b> 6-inch aperture for a 4-inch spec. Needs architect and engineer approval.</div>' : ''}`
+      : `<div class="box no"><b>NO SUITABLE SUBSTITUTE on the Michelon price list.</b><br>To be sourced outside the list and added later.
+         ${T.ref ? `<br><span class="note">Closest base: ${T.ref}.</span>` : ''}</div>`}`;
+  }
+  info.innerHTML = `<button class="close" aria-label="Close">✕</button>
+    <h3><span class="tag ${T.status}">${T.tag}</span> ${f.id}</h3>
+    <div class="note">${T.name} · ${T.scope} · ${qn}</div>
+    <dl><dt>Installed</dt><dd>${f.mountNote}</dd><dt>Plan location</dt><dd>${f.plan}</dd></dl>
+    ${body}
+    <h4 class="ih warn">Confirm</h4><ul class="note" style="color:var(--ink)">${T.flags.map(x => `<li>${x}</li>`).join('')}</ul>`;
+  info.classList.add('show'); info.querySelector('.close').onclick = () => { info.classList.remove('show'); ring.visible = false; selected = null; };
+  if (fly) {
+    if (!f.layer.visible) { const cb = document.getElementById('ly-' + (f.layer === L.controls ? 'controls' : 'fixtures')); cb.checked = true; cb.dispatchEvent(new Event('change')); }
+    const far = ['S1', 'S2'].includes(f.type) || T.scope === 'Shell' && f.head.y > 10;
+    flyTo(null, f.head.clone().setY(f.head.y * 0.6), far ? V(-16, 12, 22) : V(-7, 6, 10));
+  }
+}
+renderer.domElement.addEventListener('pointerdown', e => downAt = [e.clientX, e.clientY]);
+renderer.domElement.addEventListener('pointerup', e => {
+  if (!downAt || Math.hypot(e.clientX - downAt[0], e.clientY - downAt[1]) > 5) return;
+  const hit = pick(e); if (hit) select(hit.object.userData.id, false);
+});
+renderer.domElement.addEventListener('pointermove', e => { renderer.domElement.style.cursor = pick(e) ? 'pointer' : ''; });
+function pick(e) {
+  const r = renderer.domElement.getBoundingClientRect();
+  mouse.set(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1);
+  ray.setFromCamera(mouse, camera);
+  return ray.intersectObjects(pickables.filter(p => FIXTURES.find(f => f.id === p.userData.id).layer.visible), false)[0] || null;
+}
+document.getElementById('toggleSide').onclick = () => document.body.classList.toggle('side-closed');
+if (innerWidth < 700) document.body.classList.add('side-closed');
+
+/* ------------------------------------------------------------------ */
+setSheet(SHEET_OPTS[0][0]);
+const v0 = VIEWS['Overall']; controls.target.copy(v0.t); camera.position.copy(v0.t).add(v0.d);
+addEventListener('resize', () => {
+  camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight); labelR.setSize(innerWidth, innerHeight);
+});
+let lastCull = 0; const TAG_DIST = 70;
+const needle = document.getElementById('needle'), ease = t => t < .5 ? 2 * t * t : 1 - Math.pow(-2 * t + 2, 2) / 2;
+renderer.setAnimationLoop(now => {
+  if (anim) {
+    const k = Math.min(1, (now - anim.t0) / 800), e = ease(k);
+    camera.position.lerpVectors(anim.fromP, anim.toP, e); controls.target.lerpVectors(anim.fromT, anim.toT, e);
+    if (k === 1) anim = null;
+  }
+  controls.update();
+  if (now - lastCull > 150) {          // fixture tags only when the camera is close (or the item is selected)
+    lastCull = now;
+    for (const f of FIXTURES) f.lb.visible = f === selected || camera.position.distanceTo(f.head) < (f.far ? 260 : TAG_DIST);
+  }
+  const s = 1 + 0.08 * Math.sin(now / 300); ring.scale.set(s, s, s);
+  const az = Math.atan2(camera.position.x - controls.target.x, camera.position.z - controls.target.z);
+  needle.setAttribute('transform', `rotate(${az * 180 / Math.PI} 23 23)`);
+  renderer.render(scene, camera); labelR.render(scene, camera);
+});
+window.__model = { FIXTURES, TYPES, select, flyTo, totals: () => ({ shell: shellTotal, ti: tiTotal }) };
+</script>
+</body>
+</html>
